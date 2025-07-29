@@ -1,6 +1,5 @@
 ### 插件文档：astrbot_plugin_pollinations_images  
 > 作者：qa296  
-> 版本：1.0.0  
 > 说明：通过 AstrBot 调用 LLM 生成英文提示词，再使用 Pollinations.ai 的 Flux 模型生成图片。
 
 ---
@@ -47,8 +46,7 @@
 
 ### 6. 关于 Pollinations.ai
 - 官方文档：https://pollinations.ai  
-- 免费、无需登录，支持 Flux、Turbo 等多种模型。  
-- 若官方域名被墙或 DNS 污染，可尝试更换镜像（需自行修改源码中的 `image_url`）。
+- 免费、无需登录。
 
 ---
 

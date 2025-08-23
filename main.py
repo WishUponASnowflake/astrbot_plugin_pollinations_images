@@ -6,7 +6,7 @@ from astrbot.api import logger
 @register(
     "astrbot_plugin_pollinations_images",
     "qa296",
-    "使用 Pollinations AI 生成图片",
+    "使用 Pollinations AI生成图片。无需注册，开箱即用！",
     "1.0.0"
 )
 class PollinationsGeneratorPlugin(Star):

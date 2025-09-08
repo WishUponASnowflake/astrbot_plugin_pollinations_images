@@ -7,7 +7,7 @@ from astrbot.api import logger
     "astrbot_plugin_pollinations_images",
     "qa296",
     "使用 Pollinations AI生成图片。无需注册，开箱即用！",
-    "1.0.0"
+    "1.1.0"
 )
 class PollinationsGeneratorPlugin(Star):
     """
@@ -16,6 +16,68 @@ class PollinationsGeneratorPlugin(Star):
     def __init__(self, context: Context):
         super().__init__(context)
         logger.info("花粉AI图片生成插件已加载。")
+
+    async def generate_prompt_via_llm(self, theme: str) -> str:
+        """
+        通过 LLM 生成图片提示词的独立函数。
+
+        Args:
+            theme (str): 用户输入的主题
+
+        Returns:
+            str: 生成的英文提示词
+        """
+        provider = self.context.get_using_provider()
+        if not provider:
+            logger.warning("未找到可用的LLM服务，无法生成提示词。")
+            raise Exception("未配置或启用任何大语言模型服务。")
+
+        system_prompt_for_refinement = (
+            "You are an expert in crafting prompts for AI image generation models. "
+            "Your task is to take a user's simple idea and transform it into a rich, detailed, and artistic prompt in English. "
+            "The final output should be a single, continuous string of keywords and descriptions, separated by commas. "
+            "Do not add any other explanatory text, just the prompt itself. "
+            "Focus on visual details, art style (e.g., photorealistic, watercolor, anime), composition, and lighting."
+        )
+
+        user_prompt_for_llm = f"User's idea: {theme}"
+
+        llm_response = await provider.text_chat(
+            prompt=user_prompt_for_llm,
+            system_prompt=system_prompt_for_refinement,
+            contexts=[]
+        )
+
+        if not llm_response or not llm_response.completion_text:
+            logger.error("LLM未能返回有效的提示词。")
+            raise Exception("生成提示词失败，请稍后再试。")
+
+        return llm_response.completion_text.strip()
+
+    @filter.llm_tool(name="generate_image_with_theme")
+    async def generate_image_tool(self, event: AstrMessageEvent, theme: str):
+        """
+        LLM 函数调用工具：根据主题生成图片。
+
+        Args:
+            theme(string): 图片主题
+        """
+        try:
+            yield event.plain_result("正在为您生成图片，请稍候...")
+
+            # 调用独立的 LLM 提示词生成函数
+            refined_prompt = await self.generate_prompt_via_llm(theme)
+
+            encoded_prompt = urllib.parse.quote(refined_prompt)
+            image_url = f"https://image.pollinations.ai/prompt/{encoded_prompt}?nologo=true&model=flux"
+
+            logger.debug(f"生成的图片URL: {image_url}")
+
+            yield event.image_result(image_url)
+
+        except Exception as e:
+            logger.error(f"图片生成过程中发生错误: {e}")
+            yield event.plain_result(f"生成图片时遇到问题: {str(e)}")
 
     @filter.command("ai生图")
     async def generate_image(self, event: AstrMessageEvent, prompt_text: str):
@@ -30,43 +92,13 @@ class PollinationsGeneratorPlugin(Star):
         try:
             yield event.plain_result("正在为您请求图片中，请稍候...")
 
-
-            provider = self.context.get_using_provider()
-            if not provider:
-                logger.warning("未找到可用的LLM服务，无法生成提示词。")
-                yield event.plain_result("错误：未配置或启用任何大语言模型服务。")
-                return
-
-
-            system_prompt_for_refinement = (
-                "You are an expert in crafting prompts for AI image generation models. "
-                "Your task is to take a user's simple idea and transform it into a rich, detailed, and artistic prompt in English. "
-                "The final output should be a single, continuous string of keywords and descriptions, separated by commas. "
-                "Do not add any other explanatory text, just the prompt itself. "
-                "Focus on visual details, art style (e.g., photorealistic, watercolor, anime), composition, and lighting."
-            )
-            
-            user_prompt_for_llm = f"User's idea: {prompt_text}"
-
-
-            llm_response = await provider.text_chat(
-                prompt=user_prompt_for_llm,
-                system_prompt=system_prompt_for_refinement,
-                contexts=[]
-            )
-
-            if not llm_response or not llm_response.completion_text:
-                logger.error("LLM未能返回有效的提示词。")
-                yield event.plain_result("生成失败，请稍后再试。")
-                return
-
-            refined_prompt = llm_response.completion_text.strip()
+            # 调用独立的 LLM 提示词生成函数
+            refined_prompt = await self.generate_prompt_via_llm(prompt_text)
 
             encoded_prompt = urllib.parse.quote(refined_prompt)
             image_url = f"https://image.pollinations.ai/prompt/{encoded_prompt}?nologo=true&model=flux"
-            
-            logger.debug(f"生成的图片URL: {image_url}")
 
+            logger.debug(f"生成的图片URL: {image_url}")
 
             yield event.image_result(image_url)
 

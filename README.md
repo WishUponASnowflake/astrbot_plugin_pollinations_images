@@ -7,8 +7,6 @@
 ### 1. 功能简介
 - **指令**：`/ai生图 [主题]`
 - **LLM 函数调用**：`generate_image_with_theme` 工具
-- **流程**
-  1. 接收中文主题 → 2. 调用 LLM 将其扩展为英文提示词 → 3. 拼接 Pollinations.ai 图片 URL → 4. 返回图片。
 
 ---
 
